@@ -1,6 +1,5 @@
 package com.dj.tennis_court.domain.court.controller;
 
-import com.dj.tennis_court.domain.court.dto.PublicReserveResponse;
 import com.dj.tennis_court.domain.court.service.CourtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +14,8 @@ public class CourtController {
 
     // 호출 예시: http://localhost:8080/api/v1/courts/status?stadiumIdx=238
     @GetMapping("/v1/courts/status")
-    public PublicReserveResponse getCourtStatus(@RequestParam("stadiumIdx") String stadiumIdx) {
+    public String getCourtStatus(@RequestParam("stadiumIdx") String stadiumIdx) {
         return courtService.fetchReserveStatusByCourt(stadiumIdx);
     }
 }
+
