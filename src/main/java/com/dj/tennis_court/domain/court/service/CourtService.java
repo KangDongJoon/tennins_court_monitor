@@ -76,4 +76,7 @@ public class CourtService {
         }
     }
 
+    public List<CourtDay> getCourtDaysByStadium(String stadiumIdx) {
+        return courtRepository.findByStadiumIdx(stadiumIdx);
+    }
 }

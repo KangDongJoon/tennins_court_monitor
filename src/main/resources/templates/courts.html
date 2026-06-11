@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>테니스 코트 예약 현황</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .day-box { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 8px; }
+        .time-slot { display: inline-block; padding: 5px 10px; margin: 5px; border-radius: 4px; }
+        .available { background-color: #e6f4ea; color: #137333; }
+        .reserved { background-color: #fce8e6; color: #c5221f; }
+    </style>
+</head>
+<body>
+    <h1 th:text="${stadiumIdx} + '번 코트 예약 현황'">코트 타이틀</h1>
+    <hr>
+
+    <div th:each="day : ${courtDays}" class="day-box">
+        <h3 th:text="${day.sorDate}">yyyy-mm-dd</h3>
+        <div th:each="time : ${day.timeList}"
+             th:classappend="${time.applyStatusCd == 'AVAILABLE'} ? 'available' : 'reserved'"
+             class="time-slot">
+        <span th:text="${time.stadiumBeginHm}">hh:mm</span>
+        <span th:text="'(' + ${time.applyStatusCd} + ')'">status</span>
+    </div>
+    </div>
+</body>
+</html>
