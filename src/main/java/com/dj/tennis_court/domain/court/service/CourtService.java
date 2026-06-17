@@ -6,16 +6,18 @@ import com.dj.tennis_court.domain.court.dto.PublicReserveResponse;
 import com.dj.tennis_court.domain.court.repository.CourtRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,10 +30,24 @@ public class CourtService {
     private final RestClient restClient = RestClient.create();
     private final ObjectMapper objectMapper;
 
-    public String fetchReserveStatusByCourt(String stadiumIdx) {
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void initFetch() {
+        fetchCourt();
+    }
+
+    @Scheduled(cron = "0 */10 * * * *")
+    @Transactional
+    public void fetchCourt() {
+        for (int i = 1; i <= 8; i++) {
+            fetchReserveStatusByCourt(Integer.toString(i));
+        }
+    }
+
+    private void fetchReserveStatusByCourt(String stadiumIdx) {
 
         String targetUri = UriComponentsBuilder.fromUriString(BASE_URL)
-                .queryParam("stadiumIdx", stadiumIdx)
+                .queryParam("stadiumIdx", Integer.parseInt(stadiumIdx) + 230)
                 .build()
                 .toUriString();
 
@@ -40,13 +56,13 @@ public class CourtService {
                 .retrieve()
                 .body(String.class);
 
-        // 가능 : null, 완료 : AP, 불가능 : CLOSE
+        // 가능 : null, 완료 : AP, 불가능 : CLOSE, NONE 고려
 
         try {
             PublicReserveResponse response = objectMapper.readValue(jsonString, PublicReserveResponse.class);
 
             if (response.getUseCntList() == null) {
-                return "Failed to load data.";
+                return;
             }
 
             List<CourtDay> existingDays = courtRepository.findByStadiumIdx(stadiumIdx);
@@ -70,7 +86,6 @@ public class CourtService {
                 courtDay.addCourtTime(courtTime);
             }
 
-            return "Data loaded successfully";
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse JSON", e);
         }

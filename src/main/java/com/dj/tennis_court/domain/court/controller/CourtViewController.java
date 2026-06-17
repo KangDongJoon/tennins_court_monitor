@@ -17,12 +17,11 @@ public class CourtViewController {
     private final CourtService courtService;
 
     @GetMapping("/court-view")
-    public String showCourtPage(@RequestParam(value = "stadiumIdx", defaultValue = "231") String stadiumIdx, Model model) {
-        List<CourtDay> courtDays = courtService.getCourtDaysByStadium(stadiumIdx);
-        int stadiumIdxNum = Integer.parseInt(stadiumIdx) - 230;
-
+    public String showCourtPage(@RequestParam("stadiumIdx") String stadiumIdx, Model model) {
+        String courtNumber = Integer.toString(Integer.parseInt(stadiumIdx) - 230);
+        List<CourtDay> courtDays = courtService.getCourtDaysByStadium(courtNumber);
+        model.addAttribute("stadiumIdx", courtNumber);
         model.addAttribute("courtDays", courtDays);
-        model.addAttribute("stadiumIdx", stadiumIdxNum);
 
         return "courts";
     }
