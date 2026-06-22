@@ -17,5 +17,6 @@ public class PublicReserveResponse {
         private String sorDate;
         private String applyStatusCd;
         private String stadiumBeginHm;
+        private String stadiumEndHm;
     }
 }

@@ -1,7 +1,6 @@
 package com.dj.tennis_court.domain.court.service;
 
-import com.dj.tennis_court.domain.court.domain.CourtDay;
-import com.dj.tennis_court.domain.court.domain.CourtTime;
+import com.dj.tennis_court.domain.court.domain.Court;
 import com.dj.tennis_court.domain.court.dto.PublicReserveResponse;
 import com.dj.tennis_court.domain.court.repository.CourtRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,9 +14,11 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,7 +40,8 @@ public class CourtService {
     @Scheduled(cron = "0 */10 * * * *")
     @Transactional
     public void fetchCourt() {
-        for (int i = 1; i <= 8; i++) {
+        for (int i = 0; i <= 8; i++) {
+            if (i == 4) continue;
             fetchReserveStatusByCourt(Integer.toString(i));
         }
     }
@@ -56,34 +58,44 @@ public class CourtService {
                 .retrieve()
                 .body(String.class);
 
-        // 가능 : null, 완료 : AP, 불가능 : CLOSE, NONE 고려
-
         try {
+            int stadiumIdxToInteger = Integer.parseInt(stadiumIdx);
+            if (stadiumIdxToInteger < 4) {
+                stadiumIdx = String.valueOf(Integer.parseInt(stadiumIdx) + 1);
+            }
             PublicReserveResponse response = objectMapper.readValue(jsonString, PublicReserveResponse.class);
+
+            LocalDate today = LocalDate.now();
+
+            List<PublicReserveResponse.CourtUseCount> useCntList = response.getUseCntList();
 
             if (response.getUseCntList() == null) {
                 return;
             }
 
-            List<CourtDay> existingDays = courtRepository.findByStadiumIdx(stadiumIdx);
-            Map<LocalDate, CourtDay> dayMap = existingDays.stream()
-                    .collect(Collectors.toMap(CourtDay::getSorDate, day -> day));
+            for (PublicReserveResponse.CourtUseCount courtTime : useCntList) {
 
-            for (PublicReserveResponse.CourtUseCount dto : response.getUseCntList()) {
-                LocalDate sorDate = LocalDate.parse(dto.getSorDate());
+                // 미래가 아닌 시점의 코트는 넘어감
+                LocalDate sorDate = LocalDate.parse(courtTime.getSorDate());
+                if (!sorDate.isAfter(today)) continue;
 
-                CourtDay courtDay = dayMap.get(sorDate);
+                // End - Begin 시간이 2시간 미만이면 예약 불가 코트이므로 넘어감
+                String stadiumBeginHm = courtTime.getStadiumBeginHm();
+                String stadiumEndHm = courtTime.getStadiumEndHm();
+                Duration duration = Duration.between((LocalTime.parse(stadiumBeginHm)), LocalTime.parse(stadiumEndHm));
+                if (duration.toHours() < 2) continue;
 
-                if (courtDay == null) {
-                    courtDay = courtRepository.save(new CourtDay(stadiumIdx, sorDate));
-                    dayMap.put(sorDate, courtDay);
+                // 예약 가능 상태가 아니면 조회 후 업데이트 없으면 넘어감
+                String applyStatusCd = courtTime.getApplyStatusCd();
+                if (applyStatusCd != null) {
+                    courtRepository
+                        .findByStadiumIdxAndSorDateAndStadiumBeginHm(stadiumIdx, sorDate, stadiumBeginHm)
+                        .ifPresent(courtRepository::delete);
+
+                    continue;
                 }
 
-                String stadiumBeginHm = dto.getStadiumBeginHm();
-                String applyStatusCd = dto.getApplyStatusCd() == null ? "AVAILABLE" : dto.getApplyStatusCd();
-
-                CourtTime courtTime = new CourtTime(stadiumBeginHm, applyStatusCd);
-                courtDay.addCourtTime(courtTime);
+                courtRepository.save(new Court(stadiumIdx, sorDate, stadiumBeginHm, stadiumEndHm));
             }
 
         } catch (Exception e) {
@@ -91,7 +103,12 @@ public class CourtService {
         }
     }
 
-    public List<CourtDay> getCourtDaysByStadium(String stadiumIdx) {
-        return courtRepository.findByStadiumIdx(stadiumIdx);
+    public List<Court> getAvailableCourts(String stadiumIdx) {
+
+        return courtRepository.findByStadiumIdx(String .valueOf(Integer.parseInt(stadiumIdx) - 230))
+                .stream()
+                .sorted(Comparator.comparing(Court::getSorDate)
+                .thenComparing(Court::getStadiumBeginHm))
+                .collect(Collectors.toList());
     }
 }

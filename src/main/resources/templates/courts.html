@@ -2,96 +2,35 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>화성시 테니스 코트 예약 현황</title>
+    <title>데이터 수집 검증 페이지</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 10px;
-        }
-        .calendar-day-header {
-            background-color: #212529;
-            color: white;
-            text-align: center;
-            padding: 10px 0;
-            font-weight: bold;
-            border-radius: 6px;
-        }
-        .calendar-cell {
-            background-color: white;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            min-height: 160px;
-            padding: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-        .date-number {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #495057;
-            margin-bottom: 8px;
-            border-bottom: 2px solid #f1f3f5;
-            padding-bottom: 4px;
-        }
-        .time-badge {
-            font-size: 0.75rem;
-            width: 100%;
-            text-align: center;
-            margin-bottom: 4px;
-            padding: 4px;
-            border-radius: 4px;
-            font-weight: 600;
-            display: block;
-            text-decoration: none;
-        }
-        .status-available { background-color: #d1e7dd; color: #0f5132; }
-        .status-reserved { background-color: #f8d7da; color: #842029; opacity: 0.6; }
-    </style>
 </head>
-<body class="bg-light">
+<body class="bg-light p-5">
 
-<div class="container-fluid px-5 py-4">
-    <div class="d-flex align-items-center justify-content-between mb-4 p-4 bg-white rounded shadow-sm">
-        <h1 class="h4 mb-0 text-dark fw-bold">
-            📅 <span th:text="${stadiumIdx}">238</span>번 코트 월간 예약 현황
-        </h1>
-        <div>
-            <span class="badge status-available me-2 p-2">■ 예약 가능</span>
-            <span class="badge status-reserved p-2">■ 예약 불가</span>
-        </div>
-    </div>
+<div class="container bg-white p-4 rounded shadow-sm">
+    <h1 class="h4 mb-4 fw-bold">
+        📊 경기장 [<span th:text="${stadiumIdx}">0</span>]번 수집 데이터 raw 검증 (총 <span th:text="${courts.size()}">0</span>건)
+    </h1>
 
-    <div class="card p-4 shadow-sm border-0">
-
-        <div class="calendar-grid mb-2">
-            <div class="calendar-day-header bg-danger">일</div>
-            <div class="calendar-day-header">월</div>
-            <div class="calendar-day-header">화</div>
-            <div class="calendar-day-header">수</div>
-            <div class="calendar-day-header">목</div>
-            <div class="calendar-day-header">금</div>
-            <div class="calendar-day-header bg-primary">토</div>
-        </div>
-
-        <div class="calendar-grid">
-
-            <div th:each="day : ${courtDays}" class="calendar-cell d-flex flex-column justify-content-between">
-                <div>
-                    <div class="date-number" th:text="${day.sorDate}">yyyy-mm-dd</div>
-
-                    <div class="time-list">
-                        <div th:each="time : ${day.timeList}"
-                             th:classappend="${time.applyStatusCd == 'AVAILABLE'} ? 'status-available' : 'status-reserved'"
-                             class="time-badge">
-                            <span th:text="${time.stadiumBeginHm}">hh:mm</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark text-center">
+        <tr>
+            <th>코트 날짜 (sorDate)</th>
+            <th>시작 시간 (beginHm)</th>
+            <th>종료 시간 (endHm)</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="court : ${courts}" class="text-center">
+            <td th:text="${court.sorDate}" class="fw-bold text-secondary">2026-06-21</td>
+            <td th:text="${court.stadiumBeginHm}" class="text-primary">06:00</td>
+            <td th:text="${court.stadiumEndHm}">08:00</td>
+        </tr>
+        <tr th:if="${courts.isEmpty()}">
+            <td colspan="6" class="text-center text-muted py-4">수집된 데이터가 DB에 존재하지 않습니다.</td>
+        </tr>
+        </tbody>
+    </table>
 </div>
 
 </body>
