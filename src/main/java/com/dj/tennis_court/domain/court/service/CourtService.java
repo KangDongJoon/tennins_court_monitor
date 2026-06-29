@@ -17,8 +17,11 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,7 +37,10 @@ public class CourtService {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void initFetch() {
-        fetchCourt();
+        List<Court> courts = courtRepository.findAll();
+        if (courts.isEmpty()) {
+            fetchCourt();
+        }
     }
 
     @Scheduled(cron = "0 */10 * * * *")
@@ -47,17 +53,41 @@ public class CourtService {
     }
 
     private void fetchReserveStatusByCourt(String stadiumIdx) {
+        LocalDate today = LocalDate.now();
 
-        String targetUri = UriComponentsBuilder.fromUriString(BASE_URL)
-                .queryParam("stadiumIdx", Integer.parseInt(stadiumIdx) + 230)
-                .build()
-                .toUriString();
+        UriComponentsBuilder targetUri = UriComponentsBuilder.fromUriString(BASE_URL)
+                .queryParam("stadiumIdx", Integer.parseInt(stadiumIdx) + 230);
+
+
+        String currentMonthUri = targetUri.build().toUriString();
 
         String jsonString = restClient.get()
-                .uri(targetUri)
+                .uri(currentMonthUri)
                 .retrieve()
                 .body(String.class);
 
+        checkCourt(stadiumIdx, jsonString, today);
+
+        if (today.getDayOfMonth() >= 27) {
+            LocalDate searchYearMonth = today.plusMonths(1);
+            int searchYear = searchYearMonth.getYear();
+            int searchMonth = searchYearMonth.getMonthValue();
+
+            targetUri.replaceQueryParam("searchYear", searchYear)
+                    .replaceQueryParam("searchMonth", searchMonth);
+
+            String nextMonthUri = targetUri.build().toUriString();
+
+            jsonString = restClient.get()
+                    .uri(nextMonthUri)
+                    .retrieve()
+                    .body(String.class);
+
+            checkCourt(stadiumIdx, jsonString, today);
+        }
+    }
+
+    private void checkCourt(String stadiumIdx, String jsonString, LocalDate today) {
         try {
             int stadiumIdxToInteger = Integer.parseInt(stadiumIdx);
             if (stadiumIdxToInteger < 4) {
@@ -65,13 +95,15 @@ public class CourtService {
             }
             PublicReserveResponse response = objectMapper.readValue(jsonString, PublicReserveResponse.class);
 
-            LocalDate today = LocalDate.now();
-
             List<PublicReserveResponse.CourtUseCount> useCntList = response.getUseCntList();
 
             if (response.getUseCntList() == null) {
                 return;
             }
+
+            Set<String> dbCache = courtRepository.findByStadiumIdx(stadiumIdx).stream()
+                    .map(c -> c.getSorDate() + c.getStadiumBeginHm())
+                    .collect(Collectors.toSet());
 
             for (PublicReserveResponse.CourtUseCount courtTime : useCntList) {
 
@@ -89,9 +121,14 @@ public class CourtService {
                 String applyStatusCd = courtTime.getApplyStatusCd();
                 if (applyStatusCd != null) {
                     courtRepository
-                        .findByStadiumIdxAndSorDateAndStadiumBeginHm(stadiumIdx, sorDate, stadiumBeginHm)
-                        .ifPresent(courtRepository::delete);
+                            .findByStadiumIdxAndSorDateAndStadiumBeginHm(stadiumIdx, sorDate, stadiumBeginHm)
+                            .ifPresent(courtRepository::delete);
 
+                    continue;
+                }
+
+                String key = sorDate + stadiumBeginHm;
+                if (dbCache.contains(key)) {
                     continue;
                 }
 
@@ -105,10 +142,30 @@ public class CourtService {
 
     public List<Court> getAvailableCourts(String stadiumIdx) {
 
-        return courtRepository.findByStadiumIdx(String .valueOf(Integer.parseInt(stadiumIdx) - 230))
+        return courtRepository.findByStadiumIdx(stadiumIdx)
                 .stream()
                 .sorted(Comparator.comparing(Court::getSorDate)
-                .thenComparing(Court::getStadiumBeginHm))
+                        .thenComparing(Court::getStadiumBeginHm))
                 .collect(Collectors.toList());
+    }
+
+    public List<LocalDate> makeCalendar(YearMonth currentMonth) {
+
+        LocalDate startDate = currentMonth.atDay(1);
+        int dayOfWeek = startDate.getDayOfWeek().getValue() % 7;
+        LocalDate calendarStart = startDate.minusDays(dayOfWeek);
+
+        LocalDate endDate = currentMonth.atEndOfMonth();
+        int endDayOfWeek = endDate.getDayOfWeek().getValue() % 7;
+        LocalDate calendarEnd = endDate.plusDays(6 - endDayOfWeek);
+
+        List<LocalDate> dateList = new ArrayList<>();
+        LocalDate iterDate = calendarStart;
+        while (!iterDate.isAfter(calendarEnd)) {
+            dateList.add(iterDate);
+            iterDate = iterDate.plusDays(1);
+        }
+
+        return dateList;
     }
 }
