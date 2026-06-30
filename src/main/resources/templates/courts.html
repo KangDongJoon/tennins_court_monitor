@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <script th:inline="javascript">
-    function changeMonth(selectedValue) {
-        const parts = selectedValue.split('-');
+    function changeFilter() {
+        const stadiumIdx = document.getElementById("courtSelect").value;
+        const yearMonth = document.getElementById("monthSelect").value;
+
+        const parts = yearMonth.split('-');
         const year = parts[0];
         const month = parts[1];
 
-        const stadiumIdx = [[${stadiumIdx}]];
-
-        location.href = `/court-view?stadiumIdx=${stadiumIdx}&searchYear=${year}&searchMonth=${month}`;
+        location.href = `/court-view/${stadiumIdx}?searchYear=${year}&searchMonth=${month}`;
     }
 </script>
 
@@ -87,7 +88,7 @@
     <div class="d-flex align-items-center justify-content-between mb-4 p-4 bg-white rounded shadow-sm">
         <h1 class="h4 mb-0 fw-bold">
             <label for="monthSelect">조회 월 선택:</label>
-            <select id="monthSelect" name="searchMonth" onchange="changeMonth(this.value)">
+            <select id="monthSelect" name="searchMonth" onchange="changeFilter()">
 
                 <option th:value="${#temporals.format(today, 'yyyy-MM')}"
                         th:selected="${selectedYearMonth == #temporals.format(today, 'yyyy-MM')}"
@@ -108,15 +109,15 @@
 
         <div class="d-flex align-items-center gap-2">
             <label class="fw-bold text-muted mb-0 small">🏟️ 코트 선택</label>
-            <select class="form-select form-select-sm w-auto" onchange="location.href=this.value">
-                <option value="/court-view/1" th:selected="${stadiumIdx == '1'}">1번 코트</option>
-                <option value="/court-view/2" th:selected="${stadiumIdx == '2'}">2번 코트</option>
-                <option value="/court-view/3" th:selected="${stadiumIdx == '3'}">3번 코트</option>
-                <option value="/court-view/4" th:selected="${stadiumIdx == '4'}">4번 코트</option>
-                <option value="/court-view/5" th:selected="${stadiumIdx == '5'}">5번 코트</option>
-                <option value="/court-view/6" th:selected="${stadiumIdx == '6'}">6번 코트</option>
-                <option value="/court-view/7" th:selected="${stadiumIdx == '7'}">7번 코트</option>
-                <option value="/court-view/8" th:selected="${stadiumIdx == '8'}">8번 코트</option>
+            <select id="courtSelect" class="form-select form-select-sm w-auto" onchange="changeFilter()">
+                <option value="1" th:selected="${stadiumIdx == '1'}">1번 코트</option>
+                <option value="2" th:selected="${stadiumIdx == '2'}">2번 코트</option>
+                <option value="3" th:selected="${stadiumIdx == '3'}">3번 코트</option>
+                <option value="4" th:selected="${stadiumIdx == '4'}">4번 코트</option>
+                <option value="5" th:selected="${stadiumIdx == '5'}">5번 코트</option>
+                <option value="6" th:selected="${stadiumIdx == '6'}">6번 코트</option>
+                <option value="7" th:selected="${stadiumIdx == '7'}">7번 코트</option>
+                <option value="8" th:selected="${stadiumIdx == '8'}">8번 코트</option>
             </select>
         </div>
     </div>

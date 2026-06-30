@@ -52,6 +52,12 @@ public class CourtService {
         }
     }
 
+    @Scheduled(cron = "0 0 0 * * *")
+    @Transactional
+    public void removeExpiredCourt() {
+        courtRepository.deleteCourtsBySorDateBefore(LocalDate.now());
+    }
+
     private void fetchReserveStatusByCourt(String stadiumIdx) {
         LocalDate today = LocalDate.now();
 
